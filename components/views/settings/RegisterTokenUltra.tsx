@@ -84,12 +84,15 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
         localStorage.setItem('toyyibpay_user_id', currentUser.id);
         sessionStorage.setItem('toyyibpay_user_id', currentUser.id);
         // Also update saved order data with userId
-        const savedData = sessionStorage.getItem('toyyibpay_order_data');
+        // Check both sessionStorage and localStorage
+        const savedData = sessionStorage.getItem('toyyibpay_order_data') || localStorage.getItem('toyyibpay_order_data');
         if (savedData) {
           try {
             const orderData = JSON.parse(savedData);
             orderData.userId = currentUser.id;
+            // Save to both sessionStorage and localStorage
             sessionStorage.setItem('toyyibpay_order_data', JSON.stringify(orderData));
+            localStorage.setItem('toyyibpay_order_data', JSON.stringify(orderData));
             console.log('[RegisterTokenUltra] Saved order data with userId:', currentUser.id);
           } catch (e) {
             console.error('Failed to update order data with userId:', e);

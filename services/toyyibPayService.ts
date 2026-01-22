@@ -132,7 +132,8 @@ export const createToyyibPayOrder = async (
 };
 
 /**
- * Save order data to sessionStorage before redirecting to payment
+ * Save order data to sessionStorage and localStorage before redirecting to payment
+ * localStorage is used as backup (more persistent across redirects)
  */
 export const saveOrderData = (orderData: OrderData, billCode: string, referenceNo: string, userId?: string) => {
   const savedData: SavedOrderData = {
@@ -142,14 +143,24 @@ export const saveOrderData = (orderData: OrderData, billCode: string, referenceN
     timestamp: Date.now(),
     userId,
   };
+  // Save to both sessionStorage and localStorage
   sessionStorage.setItem('toyyibpay_order_data', JSON.stringify(savedData));
+  localStorage.setItem('toyyibpay_order_data', JSON.stringify(savedData));
 };
 
 /**
- * Get saved order data from sessionStorage
+ * Get saved order data from sessionStorage or localStorage (fallback)
+ * localStorage is checked if sessionStorage is empty (e.g., after redirect)
  */
 export const getOrderData = (): SavedOrderData | null => {
-  const saved = sessionStorage.getItem('toyyibpay_order_data');
+  // Try sessionStorage first
+  let saved = sessionStorage.getItem('toyyibpay_order_data');
+  
+  // Fallback to localStorage if sessionStorage is empty
+  if (!saved) {
+    saved = localStorage.getItem('toyyibpay_order_data');
+  }
+  
   if (!saved) return null;
   try {
     return JSON.parse(saved);
@@ -159,10 +170,11 @@ export const getOrderData = (): SavedOrderData | null => {
 };
 
 /**
- * Clear saved order data
+ * Clear saved order data from both sessionStorage and localStorage
  */
 export const clearOrderData = () => {
   sessionStorage.removeItem('toyyibpay_order_data');
+  localStorage.removeItem('toyyibpay_order_data');
 };
 
 /**
