@@ -111,11 +111,15 @@ const App: React.FC = () => {
     }
 
     // Check if this is a payment return page
+    // Only trigger if path is /payment-return AND has payment parameters
     // ToyyibPay uses 'status_id' parameter, not 'status'
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('status_id') || urlParams.get('status');
     const billcode = urlParams.get('billcode');
-    if (paymentStatus || billcode) {
+    const isPaymentReturnPath = window.location.pathname === '/payment-return';
+    
+    // Only trigger if we're on payment-return path AND have payment parameters
+    if (isPaymentReturnPath && (paymentStatus || billcode)) {
       // This is a payment return - set view and clean URL
       setActiveView('payment-return');
       // Clean URL but keep query params for PaymentReturnHandler
