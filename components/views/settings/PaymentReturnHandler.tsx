@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { handlePaymentReturn, getOrderData, clearOrderData, type PaymentReturnData } from '../../../services/toyyibPayService';
 import { registerTokenUltra } from '../../../services/userService';
 import { CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
@@ -18,9 +18,17 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
   const [status, setStatus] = useState<'checking' | 'success' | 'failed' | 'pending'>('checking');
   const [message, setMessage] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const hasProcessed = useRef(false); // ✅ Prevent multiple execution
 
   useEffect(() => {
+    // ✅ Guard: Only process once
+    if (hasProcessed.current) {
+      return;
+    }
+
     const processPaymentReturn = async () => {
+      hasProcessed.current = true; // ✅ Mark as processing
+      
       console.log('[PaymentReturn] Processing payment return...');
       console.log('[PaymentReturn] URL:', window.location.href);
       console.log('[PaymentReturn] Query params:', window.location.search);
@@ -44,15 +52,9 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       const orderData = getOrderData();
       console.log('[PaymentReturn] Order data:', orderData);
       
-      if (!orderData) {
-        console.error('[PaymentReturn] Order data not found in sessionStorage');
-        setStatus('failed');
-        setMessage('Order data not found. Please contact support.');
-        return;
-      }
-
       // Get user ID from order data, localStorage, sessionStorage, or currentUser
-      const userId = orderData.userId 
+      // ✅ Don't fail if orderData is null - we can still get userId from other sources
+      const userId = orderData?.userId 
         || localStorage.getItem('toyyibpay_user_id') 
         || sessionStorage.getItem('toyyibpay_user_id') 
         || currentUser?.id;
@@ -66,13 +68,30 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
         return;
       }
 
+      // ✅ If orderData is null but we have userId and payment is success, 
+      // it might be a return visit after successful registration
+      if (!orderData && paymentData.status === '1') {
+        console.warn('[PaymentReturn] Order data not found but payment is success - might be return visit after successful registration');
+        setStatus('success');
+        setMessage('Payment was successful and your account has been registered.');
+        return;
+      }
+
+      // If orderData is null and payment is not success, fail
+      if (!orderData) {
+        console.error('[PaymentReturn] Order data not found in sessionStorage');
+        setStatus('failed');
+        setMessage('Order data not found. Please contact support.');
+        return;
+      }
+
       // Check payment status
       // status: '1' = success, '2' = failed, '3' = pending
       console.log('[PaymentReturn] Payment status:', paymentData.status);
       
       if (paymentData.status === '1') {
-        // Payment successful - auto register
-        setStatus('success');
+        // ✅ Payment successful - DON'T set success yet, wait for registration
+        setStatus('checking'); // Keep as checking until registration complete
         setMessage('Payment successful! Registering your account...');
         
         setIsRegistering(true);
@@ -84,8 +103,11 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
 
           if (result.success) {
             console.log('[PaymentReturn] Registration successful!');
+            // ✅ NOW set success after registration is complete
+            setStatus('success');
             setMessage('Payment successful! Your Token Ultra registration is complete.');
-            // Clear order data
+            
+            // ✅ Clear order data AFTER successful registration
             clearOrderData();
             localStorage.removeItem('toyyibpay_user_id');
             sessionStorage.removeItem('toyyibpay_user_id');
@@ -129,7 +151,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
     };
 
     processPaymentReturn();
-  }, [currentUser, onUserUpdate, onNavigateToSettings]);
+  }, []); // ✅ Empty dependency array - only run once on mount
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50 dark:bg-neutral-900">
