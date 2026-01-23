@@ -303,15 +303,32 @@ export const registerTokenUltra = async (
     }
 
     // Assign email code from pool if user doesn't have one
-    let emailCode: string | null = userProfile.email_code || null;
+    // ✅ Check for null, undefined, or empty string (including whitespace-only strings)
+    const existingEmailCode = userProfile.email_code?.trim();
+    let emailCode: string | null = existingEmailCode && existingEmailCode.length > 0 ? existingEmailCode : null;
+    
+    console.log('[registerTokenUltra] Current email_code:', emailCode, '| Original:', userProfile.email_code);
+    
     if (!emailCode) {
+      console.log('[registerTokenUltra] No email code found, attempting to assign from pool...');
       const emailAssignment = await assignEmailFromPool(userId);
       if (emailAssignment.success) {
         emailCode = emailAssignment.emailCode;
+        console.log('[registerTokenUltra] ✅ Successfully assigned email code:', emailCode);
       } else {
-        // If no email available, continue without email code (admin can assign later)
-        console.warn('Failed to assign email from pool:', (emailAssignment as any).message);
+        // If no email available, log error but continue without email code (admin can assign later)
+        const errorMessage = (emailAssignment as any).message || 'Unknown error';
+        console.error('[registerTokenUltra] ❌ Failed to assign email from pool:', errorMessage);
+        // Don't fail the registration, but log the error clearly
+        console.warn('[registerTokenUltra] ⚠️ Registration will continue without email code. Admin can assign manually later.');
       }
+    } else {
+      console.log('[registerTokenUltra] User already has email code, keeping existing:', emailCode);
+    }
+    
+    // Final check before update
+    if (!emailCode) {
+      console.warn('[registerTokenUltra] ⚠️ WARNING: Registration proceeding without email_code. User ID:', userId);
     }
 
     // Update users table directly (no separate token_ultra_registrations table)
@@ -506,6 +523,8 @@ export const getMasterRecaptchaToken = async (forceRefresh: boolean = false): Pr
  */
 export const assignEmailFromPool = async (userId: string): Promise<{ success: true; emailCode: string } | { success: false; message: string }> => {
   try {
+    console.log('[assignEmailFromPool] Searching for available email pool...');
+    
     // Find available email pool (status = active, current_users_count < 10)
     // Only fetch needed fields for performance
     const { data: availableEmail, error: findError } = await supabase
@@ -521,11 +540,15 @@ export const assignEmailFromPool = async (userId: string): Promise<{ success: tr
     if (findError || !availableEmail) {
       // If no available email found, return error
       if (findError?.code === 'PGRST116') {
+        console.error('[assignEmailFromPool] ❌ No available email pool found (PGRST116)');
         return { success: false, message: 'No available email pool. Please contact administrator.' };
       }
       const message = getErrorMessage(findError);
+      console.error('[assignEmailFromPool] ❌ Error finding email pool:', findError, '| Message:', message);
       return { success: false, message: message };
     }
+
+    console.log('[assignEmailFromPool] Found available email:', availableEmail.code, '| Current count:', availableEmail.current_users_count);
 
     // Increment current_users_count (updated_at handled by DB trigger)
     const { error: updateError } = await supabase
@@ -536,15 +559,17 @@ export const assignEmailFromPool = async (userId: string): Promise<{ success: tr
       .eq('id', availableEmail.id);
 
     if (updateError) {
-      console.error('Failed to update email pool count:', updateError);
+      console.error('[assignEmailFromPool] ❌ Failed to update email pool count:', updateError);
       return { success: false, message: getErrorMessage(updateError) };
     }
 
+    console.log('[assignEmailFromPool] ✅ Successfully assigned email code:', availableEmail.code);
     return {
       success: true,
       emailCode: availableEmail.code
     };
   } catch (error) {
+    console.error('[assignEmailFromPool] ❌ Exception:', error);
     return { success: false, message: getErrorMessage(error) };
   }
 };
