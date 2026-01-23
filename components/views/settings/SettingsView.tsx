@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { type User, type AiLogItem, type Language } from '../../../types';
-import { assignPersonalTokenAndIncrementUsage, hasActiveTokenUltra } from '../../../services/userService';
+import { assignPersonalTokenAndIncrementUsage, hasActiveTokenUltra, hasActiveTokenUltraWithRegistration } from '../../../services/userService';
 import {
     CreditCardIcon, CheckCircleIcon, XIcon, EyeIcon, EyeOffIcon, ChatIcon,
     AlertTriangleIcon, DatabaseIcon, TrashIcon, RefreshCwIcon, WhatsAppIcon, InformationCircleIcon, SparklesIcon, VideoIcon, ImageIcon, KeyIcon, ActivityIcon, TelegramIcon, DownloadIcon, PlayIcon, UserIcon
@@ -388,6 +388,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
     // ============================================================================
     const [activeTab, setActiveTab] = useState<SettingsTabId>('profile');
     const [isTokenUltraActive, setIsTokenUltraActive] = useState(false);
+    const [tokenUltraStatus, setTokenUltraStatus] = useState<'active' | 'expired' | 'expiring_soon' | null>(null);
     
     // ============================================================================
     // CHECK TOKEN ULTRA STATUS
@@ -406,19 +407,32 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
                 const cached = sessionStorage.getItem(`token_ultra_active_${currentUser.id}`);
                 const isActive = cached === 'true';
                 setIsTokenUltraActive(isActive);
+                
+                // ✅ Get registration status from cache
+                const cachedReg = sessionStorage.getItem(`token_ultra_registration_${currentUser.id}`);
+                if (cachedReg) {
+                    try {
+                        const registration = JSON.parse(cachedReg);
+                        setTokenUltraStatus(registration.status || null);
+                    } catch (e) {
+                        // Ignore parse error
+                    }
+                }
                 return;
             }
             
             // Mark as checked
             sessionStorage.setItem(checkKey, 'true');
             
-            // Use hasActiveTokenUltra which has built-in cache logic
-            const isActive = await hasActiveTokenUltra(currentUser.id, false);
+            // ✅ Use hasActiveTokenUltraWithRegistration to get both status and registration
+            const result = await hasActiveTokenUltraWithRegistration(currentUser.id, false);
             
-            setIsTokenUltraActive(isActive);
+            setIsTokenUltraActive(result.isActive);
+            setTokenUltraStatus(result.registration?.status || null);
             
             // If user is on registerTokenUltra tab and Token Ultra becomes active, switch to profile tab
-            if (isActive) {
+            // But only if status is 'active' (not expiring_soon or expired)
+            if (result.isActive && result.registration?.status === 'active') {
                 setActiveTab(prevTab => {
                     if (prevTab === 'registerTokenUltra') {
                         return 'profile';
@@ -451,8 +465,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
     );
     
     // Token Ultra tab - only show for MONOKLIX users (hide for ESAIE)
-    // And only show if user doesn't have active Token Ultra
-    if (BRAND_CONFIG.name !== 'ESAIE' && !isTokenUltraActive) {
+    // Show if:
+    // 1. User doesn't have active Token Ultra, OR
+    // 2. User has expiring_soon or expired status (for renewal)
+    const shouldShowTokenUltraTab = !isTokenUltraActive || 
+                                     tokenUltraStatus === 'expiring_soon' || 
+                                     tokenUltraStatus === 'expired';
+    
+    if (BRAND_CONFIG.name !== 'ESAIE' && shouldShowTokenUltraTab) {
         tabs.push({ id: 'registerTokenUltra', label: 'Token Ultra' });
     }
     
