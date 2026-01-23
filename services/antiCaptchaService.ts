@@ -63,7 +63,7 @@ async function createCaptchaTask(config: AntiCaptchaConfig): Promise<number> {
       type: 'RecaptchaV3TaskProxyless',
       websiteURL: websiteURL,
       websiteKey: RECAPTCHA_SITE_KEY,
-      minScore: 0.9,
+      minScore: 0.7,
       pageAction: RECAPTCHA_PAGE_ACTION,
       isEnterprise: true
     }
