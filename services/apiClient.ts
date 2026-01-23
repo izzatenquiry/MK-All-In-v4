@@ -462,12 +462,16 @@ export const executeProxiedRequest = async (
 
     // Inject reCAPTCHA token into request body if available
     // Same for Veo and NANOBANANA 2 - only inject in top level clientContext
+    // UPDATED: Google now requires recaptchaContext object with token and applicationType
     if (recaptchaToken) {
       if (requestBody.clientContext) {
-        requestBody.clientContext.recaptchaToken = recaptchaToken;
+        requestBody.clientContext.recaptchaContext = {
+          token: recaptchaToken,
+          applicationType: "RECAPTCHA_APPLICATION_TYPE_WEB"
+        };
         requestBody.clientContext.sessionId = requestBody.clientContext.sessionId || `;${Date.now()}`;
       }
-      console.log('[API Client] ✅ Injected reCAPTCHA token into request body');
+      console.log('[API Client] ✅ Injected reCAPTCHA token into request body (new format: recaptchaContext)');
     } else {
       console.error('[API Client] ❌ Failed to get reCAPTCHA token - request will proceed without token');
       // Request will still proceed, but Google API may reject it
