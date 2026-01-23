@@ -39,12 +39,8 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       
       if (!paymentData) {
         console.warn('[PaymentReturn] No payment data found - not a payment return page');
-        // Not a payment return page, redirect to home
-        if (onNavigateToSettings) {
-          onNavigateToSettings();
-        } else {
-          window.location.href = '/';
-        }
+        // Not a payment return page, redirect to base URL
+        window.location.href = window.location.origin;
         return;
       }
 
@@ -121,13 +117,10 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
             sessionStorage.removeItem(`token_ultra_active_${userId}`);
             sessionStorage.removeItem(`token_ultra_active_timestamp_${userId}`);
             
-            // Redirect to settings after 3 seconds
+            // Redirect to base URL (root domain) after 3 seconds
             setTimeout(() => {
-              if (onNavigateToSettings) {
-                onNavigateToSettings();
-              } else {
-                window.location.href = '/settings';
-              }
+              // Reload to base URL without query parameters
+              window.location.href = window.location.origin;
             }, 3000);
           } else {
             console.error('[PaymentReturn] Registration failed:', result.message);
@@ -178,7 +171,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
             )}
             {!isRegistering && (
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-4">
-                Redirecting to settings...
+                Redirecting...
               </p>
             )}
           </div>
@@ -193,15 +186,12 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
             <p className="text-neutral-600 dark:text-neutral-400 mb-4">{message}</p>
             <button
               onClick={() => {
-                if (onNavigateToSettings) {
-                  onNavigateToSettings();
-                } else {
-                  window.location.href = '/settings';
-                }
+                // Reload to base URL without query parameters
+                window.location.href = window.location.origin;
               }}
               className="w-full bg-primary-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors"
             >
-              Back to Settings
+              Back to Home
             </button>
           </div>
         )}
