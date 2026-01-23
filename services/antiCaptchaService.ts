@@ -63,13 +63,15 @@ async function createCaptchaTask(config: AntiCaptchaConfig): Promise<number> {
       type: 'RecaptchaV3TaskProxyless',
       websiteURL: websiteURL,
       websiteKey: RECAPTCHA_SITE_KEY,
-      minScore: 0.7,
+      minScore: 0.7, // Reduced from 0.9 for better compatibility
       pageAction: RECAPTCHA_PAGE_ACTION,
-      isEnterprise: true
+      isEnterprise: true,
+      apiDomain: 'www.google.com' // Domain from which reCaptcha script is served
     }
   };
 
   console.log('[Anti-Captcha] Creating task with URL:', websiteURL);
+  console.log('[Anti-Captcha] Using apiDomain: www.google.com (Enterprise reCAPTCHA domain)');
 
   const response = await fetch(`${ANTICAPTCHA_API_BASE}/createTask`, {
     method: 'POST',
