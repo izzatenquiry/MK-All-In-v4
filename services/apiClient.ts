@@ -480,6 +480,12 @@ export const executeProxiedRequest = async (
         
         // Ensure sessionId is fresh
         requestBody.clientContext.sessionId = requestBody.clientContext.sessionId || `;${Date.now()}`;
+        
+        // Debug: Log full request structure to verify everything is correct
+        console.log('[API Client] 🔍 Full request body structure:', JSON.stringify(requestBody, null, 2));
+        console.log('[API Client] 🔍 clientContext keys:', Object.keys(requestBody.clientContext));
+        console.log('[API Client] 🔍 recaptchaContext position check:', 
+          Object.keys(requestBody.clientContext)[0] === 'recaptchaContext' ? '✅ FIRST' : '❌ NOT FIRST');
       }
       console.log('[API Client] ✅ Injected reCAPTCHA token into request body (new format: recaptchaContext, positioned FIRST)');
     } else {
